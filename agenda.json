@@ -1,0 +1,26 @@
+{
+  "streams": [
+    {
+      "dia": "Segunda",
+      "horario": "20:00 - 23:00",
+      "plataforma": "twitch",
+      "plataformaNome": "Twitch",
+      "conteudo": "Gameplay variado"
+    },
+    {
+      "dia": "Quarta",
+      "horario": "19:00 - 22:00",
+      "plataforma": "youtube",
+      "plataformaNome": "YouTube",
+      "conteudo": "Lives especiais"
+    },
+    {
+      "dia": "Sexta",
+      "horario": "21:00 - 00:00",
+      "plataforma": "kick",
+      "plataformaNome": "Kick",
+      "conteudo": "Gameplay e conversas"
+    }
+  ],
+  "ultimaAtualizacao": "23/05/2023"
+} 
