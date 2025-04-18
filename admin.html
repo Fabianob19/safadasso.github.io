@@ -904,14 +904,15 @@
             // Prepare os dados da agenda
             const agendaJson = JSON.stringify(agendaData);
             
-            // Tente primeiro com FormData (POST)
+            // Tente salvar usando o PHP (método principal)
             saveAgendaWithPost(agendaJson, saveBtn, originalText)
                 .catch(error => {
-                    console.error('Erro ao usar POST, tentando GET como fallback', error);
-                    updateAgendaStatus(`<i class="fas fa-info-circle"></i> POST falhou com ${error.message}, tentando método alternativo...`, 'warning');
+                    console.error('Erro ao salvar agenda:', error);
                     
-                    // Se falhar com erro 405, tente com GET
-                    if (error.message && error.message.includes('405')) {
+                    // Tente o método alternativo somente se for um erro específico
+                    if (error.message && (error.message.includes('404') || error.message.includes('405'))) {
+                        console.log('Tentando método alternativo...');
+                        updateAgendaStatus(`<i class="fas fa-info-circle"></i> Tentando método alternativo...`, 'warning');
                         return saveAgendaWithGet(agendaJson);
                     }
                     throw error; // Propague outros erros
@@ -919,7 +920,22 @@
                 .catch(error => {
                     console.error('Todos os métodos de salvamento falharam:', error);
                     updateAgendaStatus(`<i class="fas fa-times-circle"></i> Erro ao salvar: ${error.message}`, 'error');
-                    alert(`Erro ao salvar a agenda: ${error.message}\nVerifique o console para mais detalhes.`);
+                    alert(`Erro ao salvar a agenda: ${error.message}\n\nSolução alternativa: Faça download da agenda usando o botão abaixo e salve-a manualmente.`);
+                    
+                    // Mostrar o botão de download como solução alternativa
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.innerHTML = '<i class="fas fa-download"></i> Baixar Agenda para Salvar Manualmente';
+                    downloadBtn.className = 'button-secondary';
+                    downloadBtn.style.marginTop = '10px';
+                    downloadBtn.onclick = function() {
+                        downloadAgendaJson(agendaData);
+                    };
+                    
+                    // Adicionar o botão logo abaixo da mensagem de status
+                    const statusElement = document.getElementById('agenda-status');
+                    if (statusElement) {
+                        statusElement.parentNode.insertBefore(downloadBtn, statusElement.nextSibling);
+                    }
                 })
                 .finally(() => {
                     // Restaurar o botão
@@ -928,19 +944,36 @@
                 });
         });
         
+        // Função para download da agenda como JSON
+        function downloadAgendaJson(data) {
+            // Criar conteúdo do arquivo
+            const jsonContent = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonContent], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            
+            // Criar link e fazer download
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'agenda.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert('Arquivo agenda.json baixado! Agora faça upload deste arquivo para o servidor ou repositório.');
+        }
+
         // Função para salvar usando POST
         function saveAgendaWithPost(agendaJson, saveBtn, originalText) {
-            // Configurar os cabeçalhos para a requisição
-            const headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            };
+            // Criar FormData para enviar ao PHP
+            const formData = new FormData();
+            formData.append('action', 'updateAgenda');
+            formData.append('agenda', agendaJson);
             
-            // Usar o endpoint corrigido
-            return fetch('/agenda', {
+            // Usar o endpoint PHP existente
+            return fetch('/upload.php', {
                 method: 'POST',
-                headers: headers,
-                body: agendaJson // Enviar o JSON diretamente, sem FormData
+                body: formData
             })
             .then(response => {
                 if (!response.ok) {
@@ -960,7 +993,7 @@
                 
                 if (data.success) {
                     showSuccessMessage('Agenda salva com sucesso!');
-                    updateAgendaStatus(`<i class="fas fa-check-circle"></i> Agenda salva com sucesso! (Cloudflare Worker)`);
+                    updateAgendaStatus(`<i class="fas fa-check-circle"></i> Agenda salva com sucesso! (PHP)`);
                 } else {
                     updateAgendaStatus(`<i class="fas fa-exclamation-triangle"></i> Erro ao salvar: ${data.message}`, 'error');
                     alert('Erro ao salvar a agenda: ' + data.message);
@@ -972,34 +1005,27 @@
         
         // Função para salvar usando GET (fallback)
         function saveAgendaWithGet(agendaJson) {
-            // No Cloudflare Workers, preferimos sempre usar POST para enviar dados
-            // Mas como fallback, vamos tentar buscar a agenda atual
-            return fetch('/agenda', {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                }
+            // Como fallback, vamos tentar carregar a agenda atual do PHP e alertar que não foi possível salvar
+            return fetch('/upload.php?action=getServerInfo', {
+                method: 'GET'
             })
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro HTTP: ${response.status} ${response.statusText}`);
                 }
-                return response.text(); // Primeiro capturar como texto
+                
+                // Mostrar um alerta informando que o método principal falhou
+                alert('Não foi possível salvar usando o método principal. Tente fazer download da agenda e salvá-la manualmente.');
+                
+                // Fingir sucesso parcial (apenas informativo)
+                return { 
+                    success: true, 
+                    message: 'Falha ao salvar. Por favor, faça download da agenda e salve manualmente.' 
+                };
             })
-            .then(rawText => {
-                let data;
-                try {
-                    data = JSON.parse(rawText);
-                    // Como este é apenas um GET, vamos fingir um sucesso para mostrar que pelo menos conseguimos ler a agenda
-                    return { 
-                        success: true, 
-                        message: 'Leitura bem-sucedida, mas não foi possível salvar. Tente novamente mais tarde ou faça download da agenda.' 
-                    };
-                } catch (e) {
-                    // Se não for JSON válido, mostrar o texto bruto para debug
-                    console.error('Resposta não é JSON válido:', rawText);
-                    throw new Error('Resposta do servidor não é JSON válido. Verifique os logs para mais detalhes.');
-                }
+            .catch(error => {
+                console.error('Erro no método de fallback:', error);
+                throw error;
             });
         }
 

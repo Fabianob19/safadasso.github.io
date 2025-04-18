@@ -339,9 +339,6 @@
                     throw new Error(result.message || 'Erro ao salvar agenda');
                 }
             } catch (error) {
-                const saveStatus = document.getElementById('save-status');
-                const saveMessage = document.getElementById('save-message');
-                
                 saveStatus.style.display = 'block';
                 saveStatus.className = 'notice';
                 saveMessage.textContent = `Erro ao salvar: ${error.message}`;
