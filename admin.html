@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - SAFADASSO</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #800080;
+            --secondary: #ff4500;
+            --accent: #ffd700;
+            --dark: #222;
+            --light: #f8f8f8;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: var(--light);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1, h2, h3 {
+            margin-bottom: 20px;
+        }
+        
+        .admin-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        textarea {
+            min-height: 150px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .preview {
+            max-width: 200px;
+            max-height: 200px;
+            display: block;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+        
+        .stream-entry {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .agenda-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .success-message {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        #agenda-items {
+            margin-bottom: 20px;
+        }
+        
+        .remove-btn {
+            background: #f44336;
+            margin-left: 10px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px 0;
+            color: #666;
+            margin-top: 40px;
+        }
+        
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .login-container h2 {
+            margin-bottom: 30px;
+            color: var(--primary);
+        }
+        
+        .login-container input {
+            margin-bottom: 20px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="login-overlay">
+        <div class="login-container">
+            <h2>Login Administrativo</h2>
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" placeholder="Digite a senha">
+            </div>
+            <button id="login-btn">Entrar</button>
+        </div>
+    </div>
+
+    <header>
+        <div class="container">
+            <h1>Painel Administrativo - SAFADASSO</h1>
+            <p>Gerencie facilmente seu site</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="success-message" class="success-message">
+            Alterações salvas com sucesso!
+        </div>
+
+        <section class="admin-section">
+            <h2><i class="fas fa-images"></i> Atualizar Imagens</h2>
+            
+            <div class="form-group">
+                <label for="logo-upload">Logo do Site:</label>
+                <input type="file" id="logo-upload" accept="image/*">
+                <img id="logo-preview" src="logo-safadasso.png" class="preview" alt="Prévia do Logo">
+            </div>
+            
+            <div class="form-group">
+                <label for="profile-upload">Foto de Perfil:</label>
+                <input type="file" id="profile-upload" accept="image/*">
+                <img id="profile-preview" src="perfil-andre.jpg" class="preview" alt="Prévia da Foto de Perfil">
+            </div>
+            
+            <button id="save-images"><i class="fas fa-save"></i> Salvar Imagens</button>
+        </section>
+
+        <section class="admin-section">
+            <h2><i class="fas fa-calendar-alt"></i> Gerenciar Agenda de Streams</h2>
+            
+            <div id="agenda-items">
+                <!-- Os itens da agenda serão carregados aqui -->
+            </div>
+            
+            <div class="form-group">
+                <label for="stream-date">Data:</label>
+                <input type="date" id="stream-date">
+            </div>
+            
+            <div class="form-group">
+                <label for="stream-time">Horário:</label>
+                <input type="time" id="stream-time">
+            </div>
+            
+            <div class="form-group">
+                <label for="stream-title">Título:</label>
+                <input type="text" id="stream-title" placeholder="Ex: Gameplay de CS:GO">
+            </div>
+            
+            <div class="form-group">
+                <label for="stream-platform">Plataforma:</label>
+                <select id="stream-platform">
+                    <option value="Twitch">Twitch</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Kick">Kick</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="Todas">Todas as plataformas</option>
+                </select>
+            </div>
+            
+            <div class="agenda-controls">
+                <button id="add-stream"><i class="fas fa-plus"></i> Adicionar Stream</button>
+                <button id="save-agenda"><i class="fas fa-save"></i> Salvar Agenda</button>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <p>© 2023 SAFADASSO - André Gribel. Todos os direitos reservados.</p>
+    </footer>
+
+    <script>
+        // Verificação de senha
+        document.getElementById('login-btn').addEventListener('click', checkPassword);
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
+        
+        function checkPassword() {
+            const password = document.getElementById('password').value;
+            
+            // Senha simples - na produção real, isso deveria ser feito no servidor
+            // IMPORTANTE: Altere esta senha para uma mais segura
+            if (password === 'safadasso2023') {
+                document.getElementById('login-overlay').classList.add('hidden');
+                
+                // Salvar no localStorage para manter a sessão
+                localStorage.setItem('adminLoggedIn', 'true');
+            } else {
+                alert('Senha incorreta!');
+            }
+        }
+        
+        // Verificar se o usuário já está logado
+        window.addEventListener('DOMContentLoaded', function() {
+            if (localStorage.getItem('adminLoggedIn') === 'true') {
+                document.getElementById('login-overlay').classList.add('hidden');
+            }
+        });
+        
+        // Adicionar botão de logout
+        const header = document.querySelector('header .container');
+        const logoutBtn = document.createElement('button');
+        logoutBtn.textContent = 'Sair';
+        logoutBtn.style.position = 'absolute';
+        logoutBtn.style.right = '20px';
+        logoutBtn.style.top = '20px';
+        logoutBtn.addEventListener('click', function() {
+            localStorage.removeItem('adminLoggedIn');
+            window.location.reload();
+        });
+        header.style.position = 'relative';
+        header.appendChild(logoutBtn);
+        
+        // Prévia das imagens
+        document.getElementById('logo-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('logo-preview').src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('profile-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profile-preview').src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Variável global para armazenar os dados da agenda
+        let agendaData = {
+            streams: [],
+            ultimaAtualizacao: ''
+        };
+
+        // Carregar agenda existente
+        fetch('agenda.json')
+            .then(response => response.json())
+            .then(data => {
+                agendaData = data;
+                populateAgenda(data.streams);
+            })
+            .catch(error => console.error('Erro ao carregar agenda:', error));
+
+        function populateAgenda(streams) {
+            const container = document.getElementById('agenda-items');
+            container.innerHTML = '';
+            
+            streams.forEach((stream, index) => {
+                const streamEntry = document.createElement('div');
+                streamEntry.className = 'stream-entry';
+                streamEntry.innerHTML = `
+                    <h3>${stream.titulo}</h3>
+                    <p>Data: ${formatDate(stream.data)} às ${stream.horario}</p>
+                    <p>Plataforma: ${stream.plataforma}</p>
+                    <button class="remove-btn" data-index="${index}"><i class="fas fa-trash"></i> Remover</button>
+                `;
+                container.appendChild(streamEntry);
+            });
+
+            // Adicionar eventos aos botões de remover
+            document.querySelectorAll('.remove-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    removeStreamItem(index);
+                });
+            });
+        }
+
+        function formatDate(dateString) {
+            const parts = dateString.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+            return dateString;
+        }
+
+        function removeStreamItem(index) {
+            agendaData.streams.splice(index, 1);
+            populateAgenda(agendaData.streams);
+        }
+
+        // Adicionar novo stream
+        document.getElementById('add-stream').addEventListener('click', function() {
+            const date = document.getElementById('stream-date').value;
+            const time = document.getElementById('stream-time').value;
+            const title = document.getElementById('stream-title').value;
+            const platform = document.getElementById('stream-platform').value;
+            
+            if (!date || !time || !title) {
+                alert('Por favor, preencha todos os campos da stream.');
+                return;
+            }
+            
+            // Adicionar nova stream
+            agendaData.streams.push({
+                data: date,
+                horario: time,
+                titulo: title,
+                plataforma: platform
+            });
+            
+            // Atualizar a data de atualização
+            const now = new Date();
+            agendaData.ultimaAtualizacao = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+            
+            // Atualizar a visualização
+            populateAgenda(agendaData.streams);
+            
+            // Limpar os campos
+            document.getElementById('stream-date').value = '';
+            document.getElementById('stream-time').value = '';
+            document.getElementById('stream-title').value = '';
+            
+            // Mostrar mensagem de sucesso
+            showSuccessMessage('Stream adicionada à agenda! Clique em Salvar Agenda para confirmar as alterações.');
+        });
+
+        // Salvar agenda
+        document.getElementById('save-agenda').addEventListener('click', function() {
+            const formData = new FormData();
+            formData.append('action', 'updateAgenda');
+            formData.append('agenda', JSON.stringify(agendaData));
+            
+            fetch('upload.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccessMessage('Agenda salva com sucesso!');
+                } else {
+                    alert('Erro ao salvar a agenda: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao salvar agenda:', error);
+                alert('Erro ao salvar a agenda. Verifique o console para mais detalhes.');
+            });
+        });
+
+        // Salvar imagens
+        document.getElementById('save-images').addEventListener('click', function() {
+            // Verifica se há uma imagem de logo para enviar
+            const logoFile = document.getElementById('logo-upload').files[0];
+            if (logoFile) {
+                uploadImage(logoFile, 'logo');
+            }
+            
+            // Verifica se há uma imagem de perfil para enviar
+            const profileFile = document.getElementById('profile-upload').files[0];
+            if (profileFile) {
+                uploadImage(profileFile, 'profile');
+            }
+            
+            // Mostra mensagem se nenhuma imagem foi selecionada
+            if (!logoFile && !profileFile) {
+                alert('Por favor, selecione pelo menos uma imagem para atualizar.');
+            }
+        });
+        
+        function uploadImage(file, type) {
+            const formData = new FormData();
+            formData.append('action', 'uploadImage');
+            formData.append('type', type);
+            formData.append('image', file);
+            
+            fetch('upload.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccessMessage(`Imagem ${type === 'logo' ? 'do logo' : 'de perfil'} atualizada com sucesso!`);
+                } else {
+                    alert(`Erro ao atualizar a imagem ${type}: ${data.message}`);
+                }
+            })
+            .catch(error => {
+                console.error(`Erro ao atualizar a imagem ${type}:`, error);
+                alert(`Erro ao atualizar a imagem. Verifique o console para mais detalhes.`);
+            });
+        }
+
+        function showSuccessMessage(text) {
+            const message = document.getElementById('success-message');
+            message.textContent = text || 'Alterações salvas com sucesso!';
+            message.style.display = 'block';
+            
+            // Esconder a mensagem após 3 segundos
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html> 
