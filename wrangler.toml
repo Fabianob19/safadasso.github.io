@@ -1,34 +1,9 @@
-# Configuração principal necessária
 name = "safadasso"
 main = "functions/main.js"
 compatibility_date = "2025-04-18"
 
-# Configuração para assets estáticos
 [site]
 bucket = "./"
-entry-point = "."
 
-# Configurações de build
-[build]
-command = ""
-
-# Configuração de upload
-[build.upload]
-format = "directory"
-dir = "./"
-
-# Configurações de ambiente
-[env.production]
-name = "safadasso"
-route = "safadasso.com/*"
-
-[env.development]
-name = "safadasso-dev"
-
-# Configurações de Headers
-[[headers]]
-for = "/*"
-[headers.values]
-Access-Control-Allow-Origin = "*"
-Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-Access-Control-Allow-Headers = "Content-Type, Authorization" 
+[triggers]
+crons = [] 
