@@ -2,10 +2,8 @@ name = "safadasso"
 main = "functions/main.js"
 compatibility_date = "2025-04-18"
 
-# Configuração de rotas para Workers
-[[routes]]
-pattern = "/agenda*"
-script = "safadasso"
+# Configuração simples sem rotas personalizadas
+# O Cloudflare Pages gerencia as rotas automaticamente
 
 [site]
 bucket = "./"
