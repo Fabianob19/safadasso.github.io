@@ -1,13 +1,17 @@
 <?php
 // Configurações de cabeçalho para permitir requisições de outros domínios
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json"); // Garantir que o conteúdo seja sempre JSON
 
 // Desativar a exibição de erros para evitar que HTML seja incluído na resposta
 ini_set('display_errors', 0);
 error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
+
+// Tempo limite de execução aumentado para processar uploads grandes
+ini_set('max_execution_time', 300);
+ini_set('memory_limit', '128M');
 
 // Se for uma requisição OPTIONS (preflight), terminar aqui
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -28,14 +32,36 @@ function handleError($errno, $errstr, $errfile, $errline) {
 }
 set_error_handler('handleError');
 
+// Obter parâmetros da requisição (POST ou GET)
+function getParam($paramName, $default = '') {
+    if (isset($_POST[$paramName])) {
+        return $_POST[$paramName];
+    } else if (isset($_GET[$paramName])) {
+        return $_GET[$paramName];
+    } else {
+        return $default;
+    }
+}
+
 try {
+    // Registrar informações do método HTTP
+    logMessage("Requisição recebida: método " . $_SERVER['REQUEST_METHOD']);
+    
     // Verifica o tipo de ação
-    $action = isset($_POST['action']) ? $_POST['action'] : '';
+    $action = getParam('action');
+    
+    if (empty($action)) {
+        logMessage("Nenhuma ação especificada");
+        echo json_encode(['success' => false, 'message' => 'Nenhuma ação especificada']);
+        exit;
+    }
+    
+    logMessage("Ação solicitada: $action");
 
     // Processa o upload de imagens
     if ($action === 'uploadImage') {
         logMessage("Iniciando processo de upload de imagem");
-        $imageType = isset($_POST['type']) ? $_POST['type'] : '';
+        $imageType = getParam('type');
         
         if ($imageType !== 'logo' && $imageType !== 'profile') {
             logMessage("Tipo de imagem inválido: $imageType");
@@ -121,7 +147,7 @@ try {
     // Atualiza a agenda
     elseif ($action === 'updateAgenda') {
         logMessage("Iniciando atualização da agenda");
-        $agendaData = isset($_POST['agenda']) ? $_POST['agenda'] : '';
+        $agendaData = getParam('agenda');
         
         if (empty($agendaData)) {
             logMessage("Dados da agenda não fornecidos");
@@ -220,7 +246,8 @@ try {
             'max_upload_size' => ini_get('upload_max_filesize'),
             'post_max_size' => ini_get('post_max_size'),
             'time' => date('Y-m-d H:i:s'),
-            'timezone' => date_default_timezone_get()
+            'timezone' => date_default_timezone_get(),
+            'method' => $_SERVER['REQUEST_METHOD']
         ];
         
         echo json_encode([

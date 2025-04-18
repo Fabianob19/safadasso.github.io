@@ -901,11 +901,40 @@
             saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
             saveBtn.disabled = true;
             
+            // Prepare os dados da agenda
+            const agendaJson = JSON.stringify(agendaData);
+            
+            // Tente primeiro com FormData (POST)
+            saveAgendaWithPost(agendaJson, saveBtn, originalText)
+                .catch(error => {
+                    console.error('Erro ao usar POST, tentando GET como fallback', error);
+                    updateAgendaStatus(`<i class="fas fa-info-circle"></i> POST falhou com ${error.message}, tentando método alternativo...`, 'warning');
+                    
+                    // Se falhar com erro 405, tente com GET
+                    if (error.message && error.message.includes('405')) {
+                        return saveAgendaWithGet(agendaJson);
+                    }
+                    throw error; // Propague outros erros
+                })
+                .catch(error => {
+                    console.error('Todos os métodos de salvamento falharam:', error);
+                    updateAgendaStatus(`<i class="fas fa-times-circle"></i> Erro ao salvar: ${error.message}`, 'error');
+                    alert(`Erro ao salvar a agenda: ${error.message}\nVerifique o console para mais detalhes.`);
+                })
+                .finally(() => {
+                    // Restaurar o botão
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.disabled = false;
+                });
+        });
+        
+        // Função para salvar usando POST
+        function saveAgendaWithPost(agendaJson, saveBtn, originalText) {
             const formData = new FormData();
             formData.append('action', 'updateAgenda');
-            formData.append('agenda', JSON.stringify(agendaData));
+            formData.append('agenda', agendaJson);
             
-            fetch('upload.php', {
+            return fetch('upload.php', {
                 method: 'POST',
                 body: formData
             })
@@ -932,18 +961,48 @@
                     updateAgendaStatus(`<i class="fas fa-exclamation-triangle"></i> Erro ao salvar: ${data.message}`, 'error');
                     alert('Erro ao salvar a agenda: ' + data.message);
                 }
-            })
-            .catch(error => {
-                console.error('Erro ao salvar agenda:', error);
-                updateAgendaStatus(`<i class="fas fa-times-circle"></i> Erro ao salvar: ${error.message}`, 'error');
-                alert(`Erro ao salvar a agenda: ${error.message}\nVerifique o console para mais detalhes.`);
-            })
-            .finally(() => {
-                // Restaurar o botão
-                saveBtn.innerHTML = originalText;
-                saveBtn.disabled = false;
+                
+                return data;
             });
-        });
+        }
+        
+        // Função para salvar usando GET (fallback)
+        function saveAgendaWithGet(agendaJson) {
+            // Adicionar um timestamp para evitar cache
+            const timestamp = new Date().getTime();
+            const encodedAgenda = encodeURIComponent(agendaJson);
+            
+            // Criar URL para o método GET (limitada em tamanho, então pode não funcionar para agendas grandes)
+            const url = `upload.php?action=updateAgenda&timestamp=${timestamp}&agenda=${encodedAgenda}`;
+            
+            return fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status} ${response.statusText}`);
+                }
+                return response.text(); // Primeiro capturar como texto
+            })
+            .then(rawText => {
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (e) {
+                    // Se não for JSON válido, mostrar o texto bruto para debug
+                    console.error('Resposta não é JSON válido:', rawText);
+                    throw new Error('Resposta do servidor não é JSON válido. Verifique os logs para mais detalhes.');
+                }
+                
+                if (data.success) {
+                    showSuccessMessage('Agenda salva com sucesso usando método alternativo!');
+                    updateAgendaStatus(`<i class="fas fa-check-circle"></i> Agenda salva com método alternativo! ${data.count} streams atualizadas.`);
+                } else {
+                    updateAgendaStatus(`<i class="fas fa-exclamation-triangle"></i> Erro ao salvar: ${data.message}`, 'error');
+                    alert('Erro ao salvar a agenda: ' + data.message);
+                }
+                
+                return data;
+            });
+        }
 
         // Salvar imagens
         document.getElementById('save-images').addEventListener('click', function() {
