@@ -171,6 +171,127 @@
         .hidden {
             display: none !important;
         }
+        
+        .agenda-filters {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .filter-btn {
+            background-color: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            padding: 8px 15px;
+        }
+        
+        .filter-btn:hover {
+            background-color: #e0e0e0;
+            transform: translateY(-1px);
+        }
+        
+        .agenda-items {
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .stream-entry {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .stream-entry:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .edit-btn {
+            background: #4CAF50;
+            margin-right: 10px;
+        }
+        
+        .remove-btn {
+            background: #f44336;
+        }
+        
+        .agenda-preview {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        
+        .preview-content {
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .agenda-item {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .agenda-date {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+        
+        .agenda-title {
+            font-size: 1.2em;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .agenda-platform {
+            margin-bottom: 10px;
+        }
+        
+        .platform-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            background: var(--accent);
+            color: #333;
+            font-size: 0.8em;
+        }
+        
+        .agenda-description {
+            font-size: 0.9em;
+            color: #ddd;
+            font-style: italic;
+        }
+        
+        .agenda-update-info {
+            margin-top: 15px;
+            text-align: right;
+            font-size: 0.8em;
+            color: #aaa;
+        }
+        
+        .agenda-status {
+            background-color: #f5f5f5;
+            border-left: 4px solid #4CAF50;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #444;
+        }
+        
+        .agenda-status.warning {
+            border-left-color: #ff9800;
+        }
+        
+        .agenda-status.error {
+            border-left-color: #f44336;
+        }
     </style>
 </head>
 <body>
@@ -218,9 +339,32 @@
         <section class="admin-section">
             <h2><i class="fas fa-calendar-alt"></i> Gerenciar Agenda de Streams</h2>
             
-            <div id="agenda-items">
+            <div class="agenda-filters">
+                <button id="sort-by-date" class="filter-btn"><i class="fas fa-sort"></i> Ordenar por Data</button>
+                <button id="filter-by-platform" class="filter-btn"><i class="fas fa-filter"></i> Filtrar por Plataforma</button>
+                <select id="platform-filter" style="display: none; width: auto; margin-left: 10px;">
+                    <option value="todas">Todas as plataformas</option>
+                    <option value="Twitch">Twitch</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Kick">Kick</option>
+                    <option value="TikTok">TikTok</option>
+                </select>
+                <button id="reload-agenda" class="filter-btn" style="margin-left: auto;"><i class="fas fa-sync-alt"></i> Recarregar Agenda</button>
+            </div>
+            
+            <div id="agenda-status" class="agenda-status">
+                <!-- Status da agenda será exibido aqui -->
+            </div>
+            
+            <div id="agenda-items" class="agenda-items">
                 <!-- Os itens da agenda serão carregados aqui -->
             </div>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px dashed #ccc;">
+            
+            <h3><i class="fas fa-plus-circle"></i> Adicionar/Editar Stream</h3>
+            
+            <input type="hidden" id="editing-index" value="-1">
             
             <div class="form-group">
                 <label for="stream-date">Data:</label>
@@ -248,9 +392,23 @@
                 </select>
             </div>
             
+            <div class="form-group">
+                <label for="stream-description">Descrição (opcional):</label>
+                <textarea id="stream-description" placeholder="Detalhes sobre a stream..."></textarea>
+            </div>
+            
             <div class="agenda-controls">
-                <button id="add-stream"><i class="fas fa-plus"></i> Adicionar Stream</button>
+                <button id="add-stream"><i class="fas fa-plus"></i> <span id="add-btn-text">Adicionar Stream</span></button>
+                <button id="cancel-edit" style="display: none;"><i class="fas fa-times"></i> Cancelar Edição</button>
                 <button id="save-agenda"><i class="fas fa-save"></i> Salvar Agenda</button>
+                <button id="preview-agenda"><i class="fas fa-eye"></i> Visualizar no Site</button>
+            </div>
+            
+            <div id="agenda-preview" class="agenda-preview" style="display: none; margin-top: 30px;">
+                <h3>Prévia da Agenda no Site</h3>
+                <div id="preview-content" class="preview-content" style="background: #222; color: white; padding: 20px; border-radius: 5px;">
+                    <!-- Prévia da agenda será mostrada aqui -->
+                </div>
             </div>
         </section>
     </div>
@@ -333,38 +491,265 @@
             ultimaAtualizacao: ''
         };
 
-        // Carregar agenda existente
-        fetch('agenda.json')
-            .then(response => response.json())
-            .then(data => {
-                agendaData = data;
-                populateAgenda(data.streams);
-            })
-            .catch(error => console.error('Erro ao carregar agenda:', error));
+        // Função para atualizar o status da agenda
+        function updateAgendaStatus(message, type = 'success') {
+            const statusContainer = document.getElementById('agenda-status');
+            statusContainer.innerHTML = message;
+            statusContainer.className = 'agenda-status';
+            
+            if (type !== 'success') {
+                statusContainer.classList.add(type);
+            }
+        }
+
+        // Função para carregar a agenda
+        function loadAgenda() {
+            updateAgendaStatus('<i class="fas fa-spinner fa-spin"></i> Carregando agenda...', 'warning');
+            
+            fetch('agenda.json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Erro ao carregar agenda: ${response.status} ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Converter formato antigo para o novo se necessário
+                    if (data.streams && data.streams.length > 0) {
+                        // Verificar se estamos usando o formato antigo (com propriedades dia, conteudo, etc)
+                        const usandoFormatoAntigo = data.streams.some(stream => 
+                            stream.dia !== undefined && stream.conteudo !== undefined);
+                        
+                        if (usandoFormatoAntigo) {
+                            // Converter do formato antigo para o novo
+                            data.streams = data.streams.map(streamAntiga => {
+                                // Crie uma data para a stream baseada no dia da semana
+                                const hoje = new Date();
+                                const diasDaSemana = {
+                                    'Segunda': 1, 'Terça': 2, 'Quarta': 3, 'Quinta': 4, 
+                                    'Sexta': 5, 'Sábado': 6, 'Domingo': 0
+                                };
+                                
+                                // Encontrar a próxima ocorrência desse dia da semana
+                                const diaAlvo = diasDaSemana[streamAntiga.dia];
+                                const diferencaDias = (diaAlvo + 7 - hoje.getDay()) % 7;
+                                const dataStream = new Date(hoje);
+                                dataStream.setDate(hoje.getDate() + diferencaDias);
+                                
+                                // Extrair apenas a hora inicial do formato "HH:MM - HH:MM"
+                                let horarioInicial = "18:00";
+                                if (streamAntiga.horario && streamAntiga.horario.includes('-')) {
+                                    horarioInicial = streamAntiga.horario.split('-')[0].trim();
+                                }
+                                
+                                // Formatar a data como YYYY-MM-DD para o novo formato
+                                const dataFormatada = dataStream.toISOString().split('T')[0];
+                                
+                                return {
+                                    data: dataFormatada,
+                                    horario: horarioInicial,
+                                    titulo: streamAntiga.conteudo || "Stream de " + streamAntiga.dia,
+                                    plataforma: streamAntiga.plataformaNome || streamAntiga.plataforma || "Twitch",
+                                    descricao: `Stream originalmente agendada para ${streamAntiga.dia}s às ${streamAntiga.horario}`
+                                };
+                            });
+                            
+                            console.log("Agenda convertida do formato antigo para o novo", data.streams);
+                            
+                            // Atualizar a data de atualização
+                            const now = new Date();
+                            data.ultimaAtualizacao = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+                            
+                            // Alerta o usuário sobre a conversão
+                            updateAgendaStatus('<i class="fas fa-exclamation-triangle"></i> Streams convertidas do formato antigo. Verifique e salve as alterações!', 'warning');
+                        } else {
+                            updateAgendaStatus(`<i class="fas fa-check-circle"></i> ${data.streams.length} streams carregadas. Última atualização: ${data.ultimaAtualizacao || 'Desconhecida'}`);
+                        }
+                    } else {
+                        updateAgendaStatus('<i class="fas fa-info-circle"></i> Nenhuma stream encontrada na agenda. Crie novas streams abaixo.');
+                    }
+                    
+                    agendaData = data;
+                    populateAgenda(data.streams);
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar agenda:', error);
+                    // Se o arquivo não existir ou for inválido, inicializar com dados vazios
+                    agendaData = {
+                        streams: [],
+                        ultimaAtualizacao: new Date().toLocaleDateString('pt-BR')
+                    };
+                    populateAgenda([]);
+                    updateAgendaStatus('<i class="fas fa-exclamation-circle"></i> Erro ao carregar agenda! Crie uma nova agenda.', 'error');
+                });
+        }
+        
+        // Carregar agenda ao iniciar a página
+        loadAgenda();
+        
+        // Botão de recarregar agenda
+        document.getElementById('reload-agenda').addEventListener('click', function() {
+            loadAgenda();
+        });
+
+        // Ordenação e filtragem de streams
+        document.getElementById('sort-by-date').addEventListener('click', function() {
+            const sortedStreams = [...agendaData.streams].sort((a, b) => {
+                const dateA = new Date(a.data + 'T' + a.horario);
+                const dateB = new Date(b.data + 'T' + b.horario);
+                return dateA - dateB;
+            });
+            
+            populateAgenda(sortedStreams);
+            showSuccessMessage('Streams ordenadas por data');
+        });
+
+        document.getElementById('filter-by-platform').addEventListener('click', function() {
+            const filterSelect = document.getElementById('platform-filter');
+            if (filterSelect.style.display === 'none') {
+                filterSelect.style.display = 'inline-block';
+            } else {
+                filterSelect.style.display = 'none';
+            }
+        });
+
+        document.getElementById('platform-filter').addEventListener('change', function() {
+            const platform = this.value;
+            let filteredStreams;
+            
+            if (platform === 'todas') {
+                filteredStreams = agendaData.streams;
+            } else {
+                filteredStreams = agendaData.streams.filter(stream => 
+                    stream.plataforma === platform || stream.plataforma === 'Todas'
+                );
+            }
+            
+            populateAgenda(filteredStreams);
+        });
+
+        // Visualizar prévia da agenda
+        document.getElementById('preview-agenda').addEventListener('click', function() {
+            const previewContainer = document.getElementById('agenda-preview');
+            const previewContent = document.getElementById('preview-content');
+            
+            if (previewContainer.style.display === 'none') {
+                previewContainer.style.display = 'block';
+                
+                // Criar HTML semelhante ao que será exibido no site
+                let previewHTML = '<div class="agenda-preview-container">';
+                
+                // Ordenar por data
+                const sortedStreams = [...agendaData.streams].sort((a, b) => {
+                    const dateA = new Date(a.data + 'T' + a.horario);
+                    const dateB = new Date(b.data + 'T' + b.horario);
+                    return dateA - dateB;
+                });
+                
+                // Mostrar apenas as próximas 5 streams
+                const nextStreams = sortedStreams.filter(stream => {
+                    const streamDate = new Date(stream.data + 'T' + stream.horario);
+                    return streamDate >= new Date();
+                }).slice(0, 5);
+                
+                if (nextStreams.length === 0) {
+                    previewHTML += '<p>Não há streams agendadas.</p>';
+                } else {
+                    nextStreams.forEach(stream => {
+                        const date = formatDate(stream.data);
+                        
+                        previewHTML += `
+                            <div class="agenda-item">
+                                <div class="agenda-date">${date} às ${stream.horario}</div>
+                                <div class="agenda-title">${stream.titulo}</div>
+                                <div class="agenda-platform">
+                                    <span class="platform-tag">${stream.plataforma}</span>
+                                </div>
+                                ${stream.descricao ? `<div class="agenda-description">${stream.descricao}</div>` : ''}
+                            </div>
+                        `;
+                    });
+                }
+                
+                previewHTML += `
+                    <div class="agenda-update-info">
+                        Última atualização: ${agendaData.ultimaAtualizacao || 'Não disponível'}
+                    </div>
+                </div>`;
+                
+                previewContent.innerHTML = previewHTML;
+                
+                // Rolar até a prévia
+                previewContainer.scrollIntoView({behavior: 'smooth'});
+            } else {
+                previewContainer.style.display = 'none';
+            }
+        });
 
         function populateAgenda(streams) {
             const container = document.getElementById('agenda-items');
             container.innerHTML = '';
             
+            if (streams.length === 0) {
+                container.innerHTML = '<p>Nenhuma stream agendada. Adicione novas streams usando o formulário abaixo.</p>';
+                return;
+            }
+            
             streams.forEach((stream, index) => {
                 const streamEntry = document.createElement('div');
                 streamEntry.className = 'stream-entry';
+                
+                const platformClass = getPlatformClass(stream.plataforma);
+                
                 streamEntry.innerHTML = `
-                    <h3>${stream.titulo}</h3>
-                    <p>Data: ${formatDate(stream.data)} às ${stream.horario}</p>
-                    <p>Plataforma: ${stream.plataforma}</p>
-                    <button class="remove-btn" data-index="${index}"><i class="fas fa-trash"></i> Remover</button>
+                    <div style="border-left: 4px solid ${platformClass}; padding-left: 10px;">
+                        <h3>${stream.titulo}</h3>
+                        <p>Data: ${formatDate(stream.data)} às ${stream.horario}</p>
+                        <p>Plataforma: <span style="background-color: ${platformClass}; color: white; padding: 2px 6px; border-radius: 3px;">${stream.plataforma}</span></p>
+                        ${stream.descricao ? `<p>Descrição: ${stream.descricao}</p>` : ''}
+                    </div>
+                    <div style="display: flex; margin-top: 10px;">
+                        <button class="edit-btn" data-index="${getStreamIndex(stream)}"><i class="fas fa-edit"></i> Editar</button>
+                        <button class="remove-btn" data-index="${getStreamIndex(stream)}"><i class="fas fa-trash"></i> Remover</button>
+                    </div>
                 `;
                 container.appendChild(streamEntry);
             });
 
-            // Adicionar eventos aos botões de remover
+            // Adicionar eventos aos botões
             document.querySelectorAll('.remove-btn').forEach(button => {
                 button.addEventListener('click', function() {
                     const index = parseInt(this.getAttribute('data-index'));
                     removeStreamItem(index);
                 });
             });
+            
+            document.querySelectorAll('.edit-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    editStreamItem(index);
+                });
+            });
+        }
+        
+        function getPlatformClass(platform) {
+            const platformColors = {
+                'Twitch': '#6441a5',
+                'YouTube': '#ff0000',
+                'Kick': '#53fc18',
+                'TikTok': '#000000',
+                'Todas': '#ff6600'
+            };
+            
+            return platformColors[platform] || '#666666';
+        }
+        
+        function getStreamIndex(stream) {
+            return agendaData.streams.findIndex(s => 
+                s.data === stream.data && 
+                s.horario === stream.horario && 
+                s.titulo === stream.titulo
+            );
         }
 
         function formatDate(dateString) {
@@ -376,44 +761,103 @@
         }
 
         function removeStreamItem(index) {
-            agendaData.streams.splice(index, 1);
-            populateAgenda(agendaData.streams);
+            if (confirm('Tem certeza que deseja remover esta stream?')) {
+                agendaData.streams.splice(index, 1);
+                populateAgenda(agendaData.streams);
+                showSuccessMessage('Stream removida da agenda');
+            }
+        }
+        
+        function editStreamItem(index) {
+            const stream = agendaData.streams[index];
+            
+            // Preencher o formulário com os dados da stream
+            document.getElementById('stream-date').value = stream.data;
+            document.getElementById('stream-time').value = stream.horario;
+            document.getElementById('stream-title').value = stream.titulo;
+            document.getElementById('stream-platform').value = stream.plataforma;
+            document.getElementById('stream-description').value = stream.descricao || '';
+            
+            // Marcar que estamos editando
+            document.getElementById('editing-index').value = index;
+            document.getElementById('add-btn-text').textContent = 'Atualizar Stream';
+            document.getElementById('cancel-edit').style.display = 'inline-block';
+            
+            // Rolar até o formulário
+            document.getElementById('stream-date').scrollIntoView({behavior: 'smooth'});
+        }
+        
+        // Cancelar edição
+        document.getElementById('cancel-edit').addEventListener('click', function() {
+            resetForm();
+        });
+        
+        function resetForm() {
+            document.getElementById('stream-date').value = '';
+            document.getElementById('stream-time').value = '';
+            document.getElementById('stream-title').value = '';
+            document.getElementById('stream-platform').selectedIndex = 0;
+            document.getElementById('stream-description').value = '';
+            document.getElementById('editing-index').value = '-1';
+            document.getElementById('add-btn-text').textContent = 'Adicionar Stream';
+            document.getElementById('cancel-edit').style.display = 'none';
         }
 
-        // Adicionar novo stream
+        // Adicionar/Atualizar stream
         document.getElementById('add-stream').addEventListener('click', function() {
             const date = document.getElementById('stream-date').value;
             const time = document.getElementById('stream-time').value;
             const title = document.getElementById('stream-title').value;
             const platform = document.getElementById('stream-platform').value;
+            const description = document.getElementById('stream-description').value;
+            const editingIndex = parseInt(document.getElementById('editing-index').value);
             
             if (!date || !time || !title) {
-                alert('Por favor, preencha todos os campos da stream.');
+                alert('Por favor, preencha os campos obrigatórios: Data, Horário e Título.');
                 return;
             }
             
-            // Adicionar nova stream
-            agendaData.streams.push({
-                data: date,
-                horario: time,
-                titulo: title,
-                plataforma: platform
-            });
+            // Verificar se a data está no passado
+            const streamDate = new Date(date + 'T' + time);
+            if (streamDate < new Date()) {
+                if (!confirm('Essa data está no passado. Deseja adicionar mesmo assim?')) {
+                    return;
+                }
+            }
+            
+            // Se estamos editando, atualizar o item existente
+            if (editingIndex >= 0) {
+                agendaData.streams[editingIndex] = {
+                    data: date,
+                    horario: time,
+                    titulo: title,
+                    plataforma: platform,
+                    descricao: description
+                };
+                
+                showSuccessMessage('Stream atualizada com sucesso!');
+            } else {
+                // Adicionar nova stream
+                agendaData.streams.push({
+                    data: date,
+                    horario: time,
+                    titulo: title,
+                    plataforma: platform,
+                    descricao: description
+                });
+                
+                showSuccessMessage('Stream adicionada à agenda! Clique em Salvar Agenda para confirmar as alterações.');
+            }
             
             // Atualizar a data de atualização
             const now = new Date();
             agendaData.ultimaAtualizacao = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
             
+            // Resetar o formulário
+            resetForm();
+            
             // Atualizar a visualização
             populateAgenda(agendaData.streams);
-            
-            // Limpar os campos
-            document.getElementById('stream-date').value = '';
-            document.getElementById('stream-time').value = '';
-            document.getElementById('stream-title').value = '';
-            
-            // Mostrar mensagem de sucesso
-            showSuccessMessage('Stream adicionada à agenda! Clique em Salvar Agenda para confirmar as alterações.');
         });
 
         // Salvar agenda
@@ -484,15 +928,15 @@
             });
         }
 
-        function showSuccessMessage(text) {
+        function showSuccessMessage(text, duration = 3000) {
             const message = document.getElementById('success-message');
             message.textContent = text || 'Alterações salvas com sucesso!';
             message.style.display = 'block';
             
-            // Esconder a mensagem após 3 segundos
+            // Esconder a mensagem após o tempo especificado
             setTimeout(() => {
                 message.style.display = 'none';
-            }, 3000);
+            }, duration);
         }
     </script>
 </body>
