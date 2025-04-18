@@ -965,15 +965,17 @@
 
         // Função para salvar usando POST
         function saveAgendaWithPost(agendaJson, saveBtn, originalText) {
-            // Criar FormData para enviar ao PHP
-            const formData = new FormData();
-            formData.append('action', 'updateAgenda');
-            formData.append('agenda', agendaJson);
+            // Configurar os cabeçalhos para a requisição
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
             
-            // Usar o endpoint PHP existente
-            return fetch('/upload.php', {
+            // Usar o endpoint do Cloudflare Worker
+            return fetch('/functions/agenda', {
                 method: 'POST',
-                body: formData
+                headers: headers,
+                body: agendaJson // Enviar o JSON diretamente
             })
             .then(response => {
                 if (!response.ok) {
@@ -993,7 +995,7 @@
                 
                 if (data.success) {
                     showSuccessMessage('Agenda salva com sucesso!');
-                    updateAgendaStatus(`<i class="fas fa-check-circle"></i> Agenda salva com sucesso! (PHP)`);
+                    updateAgendaStatus(`<i class="fas fa-check-circle"></i> Agenda salva com sucesso! (Cloudflare Worker)`);
                 } else {
                     updateAgendaStatus(`<i class="fas fa-exclamation-triangle"></i> Erro ao salvar: ${data.message}`, 'error');
                     alert('Erro ao salvar a agenda: ' + data.message);
@@ -1005,22 +1007,24 @@
         
         // Função para salvar usando GET (fallback)
         function saveAgendaWithGet(agendaJson) {
-            // Como fallback, vamos tentar carregar a agenda atual do PHP e alertar que não foi possível salvar
-            return fetch('/upload.php?action=getServerInfo', {
-                method: 'GET'
+            // Como fallback, vamos tentar buscar a agenda atual usando o Cloudflare Worker
+            return fetch('/functions/agenda', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
             })
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro HTTP: ${response.status} ${response.statusText}`);
                 }
                 
-                // Mostrar um alerta informando que o método principal falhou
-                alert('Não foi possível salvar usando o método principal. Tente fazer download da agenda e salvá-la manualmente.');
+                // Mostrar alerta que não conseguimos salvar, mas pelo menos conseguimos ler a agenda
+                alert('Não foi possível salvar a agenda usando POST. Verificaremos se conseguimos ler a agenda existente.');
                 
-                // Fingir sucesso parcial (apenas informativo)
                 return { 
                     success: true, 
-                    message: 'Falha ao salvar. Por favor, faça download da agenda e salve manualmente.' 
+                    message: 'Leitura bem-sucedida, mas não foi possível salvar. Tente novamente mais tarde.' 
                 };
             })
             .catch(error => {
