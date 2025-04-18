@@ -963,19 +963,46 @@
             alert('Arquivo agenda.json baixado! Agora faça upload deste arquivo para o servidor ou repositório.');
         }
 
-        // Função para salvar usando POST
+        // Função para salvar usando GET com parâmetros (contorno para limitações do Cloudflare)
         function saveAgendaWithPost(agendaJson, saveBtn, originalText) {
+            // Codificar o JSON para ser usado como parâmetro na URL
+            const encodedData = encodeURIComponent(agendaJson);
+            
             // Configurar os cabeçalhos para a requisição
             const headers = {
-                'Content-Type': 'application/json',
                 'Accept': 'application/json'
             };
             
-            // Usar o endpoint do Cloudflare Worker
-            return fetch('/functions/agenda', {
-                method: 'POST',
-                headers: headers,
-                body: agendaJson // Enviar o JSON diretamente
+            // Verificar o tamanho da URL
+            if (encodedData.length > 1500) {
+                // Se for muito grande para URL, mostrar mensagem de erro
+                updateAgendaStatus(`<i class="fas fa-exclamation-triangle"></i> Agenda muito grande para salvar via URL. Use o botão de download.`, 'error');
+                
+                // Oferecer opção de download
+                const downloadBtn = document.createElement('button');
+                downloadBtn.innerHTML = '<i class="fas fa-download"></i> Baixar Agenda';
+                downloadBtn.className = 'button-secondary';
+                downloadBtn.style.marginTop = '10px';
+                downloadBtn.onclick = function() {
+                    downloadAgendaJson(agendaData);
+                };
+                
+                // Adicionar o botão logo abaixo da mensagem de status
+                const statusElement = document.getElementById('agenda-status');
+                if (statusElement) {
+                    statusElement.parentNode.insertBefore(downloadBtn, statusElement.nextSibling);
+                }
+                
+                // Restaurar o botão e retornar falha
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+                return Promise.reject(new Error('Agenda muito grande para salvar via URL'));
+            }
+            
+            // Usar o endpoint do Cloudflare Worker com GET e dados como parâmetro
+            return fetch(`/functions/agenda?data=${encodedData}&write=true`, {
+                method: 'GET',
+                headers: headers
             })
             .then(response => {
                 if (!response.ok) {
