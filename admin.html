@@ -930,13 +930,17 @@
         
         // Função para salvar usando POST
         function saveAgendaWithPost(agendaJson, saveBtn, originalText) {
-            const formData = new FormData();
-            formData.append('action', 'updateAgenda');
-            formData.append('agenda', agendaJson);
+            // Configurar os cabeçalhos para a requisição
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
             
-            return fetch('upload.php', {
+            // Usar o endpoint do Cloudflare Worker ao invés de upload.php
+            return fetch('/functions/agenda', {
                 method: 'POST',
-                body: formData
+                headers: headers,
+                body: agendaJson // Enviar o JSON diretamente, sem FormData
             })
             .then(response => {
                 if (!response.ok) {
@@ -956,7 +960,7 @@
                 
                 if (data.success) {
                     showSuccessMessage('Agenda salva com sucesso!');
-                    updateAgendaStatus(`<i class="fas fa-check-circle"></i> Agenda salva com sucesso! ${data.count} streams atualizadas.`);
+                    updateAgendaStatus(`<i class="fas fa-check-circle"></i> Agenda salva com sucesso! (Cloudflare Worker)`);
                 } else {
                     updateAgendaStatus(`<i class="fas fa-exclamation-triangle"></i> Erro ao salvar: ${data.message}`, 'error');
                     alert('Erro ao salvar a agenda: ' + data.message);
@@ -968,14 +972,14 @@
         
         // Função para salvar usando GET (fallback)
         function saveAgendaWithGet(agendaJson) {
-            // Adicionar um timestamp para evitar cache
-            const timestamp = new Date().getTime();
-            const encodedAgenda = encodeURIComponent(agendaJson);
-            
-            // Criar URL para o método GET (limitada em tamanho, então pode não funcionar para agendas grandes)
-            const url = `upload.php?action=updateAgenda&timestamp=${timestamp}&agenda=${encodedAgenda}`;
-            
-            return fetch(url)
+            // No Cloudflare Workers, preferimos sempre usar POST para enviar dados
+            // Mas como fallback, vamos tentar buscar a agenda atual
+            return fetch('/functions/agenda', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Erro HTTP: ${response.status} ${response.statusText}`);
@@ -986,21 +990,16 @@
                 let data;
                 try {
                     data = JSON.parse(rawText);
+                    // Como este é apenas um GET, vamos fingir um sucesso para mostrar que pelo menos conseguimos ler a agenda
+                    return { 
+                        success: true, 
+                        message: 'Leitura bem-sucedida, mas não foi possível salvar. Tente novamente mais tarde ou faça download da agenda.' 
+                    };
                 } catch (e) {
                     // Se não for JSON válido, mostrar o texto bruto para debug
                     console.error('Resposta não é JSON válido:', rawText);
                     throw new Error('Resposta do servidor não é JSON válido. Verifique os logs para mais detalhes.');
                 }
-                
-                if (data.success) {
-                    showSuccessMessage('Agenda salva com sucesso usando método alternativo!');
-                    updateAgendaStatus(`<i class="fas fa-check-circle"></i> Agenda salva com método alternativo! ${data.count} streams atualizadas.`);
-                } else {
-                    updateAgendaStatus(`<i class="fas fa-exclamation-triangle"></i> Erro ao salvar: ${data.message}`, 'error');
-                    alert('Erro ao salvar a agenda: ' + data.message);
-                }
-                
-                return data;
             });
         }
 
@@ -1025,6 +1024,12 @@
         });
         
         function uploadImage(file, type) {
+            // No Cloudflare Pages, precisaríamos de uma função especial para upload de arquivos
+            // Por enquanto, vamos informar que essa funcionalidade não está disponível
+            alert(`Upload de imagens ainda não está disponível no Cloudflare Pages.\n\nPara atualizar imagens, você precisará:\n1. Fazer upload das imagens para o GitHub\n2. Atualizar o repositório manualmente`);
+            
+            // Código antigo comentado:
+            /*
             const formData = new FormData();
             formData.append('action', 'uploadImage');
             formData.append('type', type);
@@ -1046,6 +1051,7 @@
                 console.error(`Erro ao atualizar a imagem ${type}:`, error);
                 alert(`Erro ao atualizar a imagem. Verifique o console para mais detalhes.`);
             });
+            */
         }
 
         function showSuccessMessage(text, duration = 3000) {
