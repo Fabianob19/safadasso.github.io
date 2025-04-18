@@ -936,8 +936,8 @@
                 'Accept': 'application/json'
             };
             
-            // Usar o endpoint do Cloudflare Worker ao invés de upload.php
-            return fetch('/functions/agenda', {
+            // Usar o endpoint corrigido
+            return fetch('/agenda', {
                 method: 'POST',
                 headers: headers,
                 body: agendaJson // Enviar o JSON diretamente, sem FormData
@@ -974,7 +974,7 @@
         function saveAgendaWithGet(agendaJson) {
             // No Cloudflare Workers, preferimos sempre usar POST para enviar dados
             // Mas como fallback, vamos tentar buscar a agenda atual
-            return fetch('/functions/agenda', {
+            return fetch('/agenda', {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json'

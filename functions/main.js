@@ -26,7 +26,7 @@ export default {
     }
     
     // Rotear para funções específicas com base no caminho
-    if (url.pathname.startsWith('/functions/agenda')) {
+    if (url.pathname === '/agenda' || url.pathname.startsWith('/functions/agenda')) {
       // Criar um contexto similar ao esperado pela função agenda
       const context = {
         request,

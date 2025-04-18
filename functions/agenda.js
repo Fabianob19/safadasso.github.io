@@ -11,6 +11,9 @@ export async function onRequest(context) {
     "Content-Type": "application/json"
   };
   
+  // Log para ajudar no debug
+  console.log(`Recebida solicitação para agenda: ${request.method} ${new URL(request.url).pathname}`);
+  
   // Lidar com requisições OPTIONS (preflight CORS)
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -23,7 +26,16 @@ export async function onRequest(context) {
   if (request.method === "POST") {
     try {
       // Buscar o conteúdo JSON enviado
-      const jsonData = await request.json();
+      let jsonData;
+      try {
+        jsonData = await request.json();
+      } catch (parseError) {
+        console.error("Erro ao fazer parse do JSON:", parseError);
+        return new Response(
+          JSON.stringify({ success: false, message: "JSON inválido enviado" }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
       
       // Verificar se o JSON é válido e possui a estrutura correta
       if (!jsonData || !jsonData.streams || !Array.isArray(jsonData.streams)) {
@@ -47,14 +59,28 @@ export async function onRequest(context) {
       // Salvar na KV (armazenamento do Cloudflare)
       // Nota: isso requer configuração do KV namespace no Cloudflare
       if (env.AGENDA_KV) {
-        await env.AGENDA_KV.put("agenda", JSON.stringify(jsonData));
+        try {
+          await env.AGENDA_KV.put("agenda", JSON.stringify(jsonData));
+          console.log("Agenda salva no KV com sucesso");
+        } catch (kvError) {
+          console.error("Erro ao salvar no KV:", kvError);
+          // Continuar mesmo com erro no KV
+        }
+      } else {
+        console.log("AGENDA_KV não configurado, pulando armazenamento");
       }
       
+      // Responder com sucesso
       return new Response(
-        JSON.stringify({ success: true, message: "Agenda atualizada com sucesso" }),
+        JSON.stringify({ 
+          success: true, 
+          message: "Agenda atualizada com sucesso",
+          count: jsonData.streams.length
+        }),
         { status: 200, headers: corsHeaders }
       );
     } catch (error) {
+      console.error("Erro ao processar agenda:", error);
       return new Response(
         JSON.stringify({ success: false, message: `Erro ao processar a agenda: ${error.message}` }),
         { status: 500, headers: corsHeaders }
@@ -69,13 +95,47 @@ export async function onRequest(context) {
       
       // Tentar obter do KV se estiver configurado
       if (env.AGENDA_KV) {
-        agendaData = await env.AGENDA_KV.get("agenda");
+        try {
+          agendaData = await env.AGENDA_KV.get("agenda");
+          console.log("Agenda obtida do KV com sucesso");
+        } catch (kvError) {
+          console.error("Erro ao obter do KV:", kvError);
+          // Continuar mesmo com erro no KV
+        }
+      } else {
+        console.log("AGENDA_KV não configurado, pulando leitura");
       }
       
       // Se não houver dados no KV, buscar do arquivo estático
       if (!agendaData) {
-        const response = await fetch(new URL('/agenda.json', request.url));
-        agendaData = await response.text();
+        try {
+          console.log("Tentando buscar agenda.json do armazenamento estático");
+          const response = await fetch(new URL('/agenda.json', request.url));
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          agendaData = await response.text();
+          console.log("Agenda obtida do arquivo estático com sucesso");
+        } catch (fetchError) {
+          console.error("Erro ao buscar arquivo estático:", fetchError);
+          // Se não conseguir buscar o arquivo, criar uma agenda vazia
+          agendaData = JSON.stringify({
+            streams: [],
+            ultimaAtualizacao: new Date().toLocaleDateString('pt-BR')
+          });
+        }
+      }
+      
+      // Verificar se é um JSON válido antes de retornar
+      try {
+        JSON.parse(agendaData);
+      } catch (parseError) {
+        console.error("Agenda recuperada não é um JSON válido:", parseError);
+        // Criar uma agenda vazia se o JSON for inválido
+        agendaData = JSON.stringify({
+          streams: [],
+          ultimaAtualizacao: new Date().toLocaleDateString('pt-BR')
+        });
       }
       
       return new Response(agendaData, {
@@ -83,6 +143,7 @@ export async function onRequest(context) {
         headers: corsHeaders
       });
     } catch (error) {
+      console.error("Erro ao obter agenda:", error);
       return new Response(
         JSON.stringify({ success: false, message: `Erro ao obter a agenda: ${error.message}` }),
         { status: 500, headers: corsHeaders }
