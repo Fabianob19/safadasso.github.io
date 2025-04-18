@@ -506,10 +506,17 @@
         function loadAgenda() {
             updateAgendaStatus('<i class="fas fa-spinner fa-spin"></i> Carregando agenda...', 'warning');
             
-            fetch('agenda.json')
+            // Tentar primeiro carregar do Worker
+            fetch('/_worker/agenda')
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error(`Erro ao carregar agenda: ${response.status} ${response.statusText}`);
+                        // Se falhar com o Worker, tente o arquivo estático
+                        return fetch('agenda.json').then(staticResponse => {
+                            if (!staticResponse.ok) {
+                                throw new Error(`Erro ao carregar agenda: ${staticResponse.status} ${staticResponse.statusText}`);
+                            }
+                            return staticResponse.json();
+                        });
                     }
                     return response.json();
                 })
@@ -999,8 +1006,8 @@
                 return Promise.reject(new Error('Agenda muito grande para salvar via URL'));
             }
             
-            // Usar o endpoint do Cloudflare Worker com GET e dados como parâmetro
-            return fetch(`/functions/agenda?data=${encodedData}&write=true`, {
+            // Usar o endpoint do Cloudflare Worker com o padrão correto para funções no Pages
+            return fetch(`/_worker/agenda?data=${encodedData}&write=true`, {
                 method: 'GET',
                 headers: headers
             })
@@ -1035,7 +1042,7 @@
         // Função para salvar usando GET (fallback)
         function saveAgendaWithGet(agendaJson) {
             // Como fallback, vamos tentar buscar a agenda atual usando o Cloudflare Worker
-            return fetch('/functions/agenda', {
+            return fetch('/_worker/agenda', {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json'
