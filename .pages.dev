@@ -1,0 +1,2 @@
+build_output_directory = "./"
+pages_build_output_dir = "./" 
