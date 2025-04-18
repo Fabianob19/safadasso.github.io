@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editor de Agenda Offline - SAFADASSO</title>
+    <title>Editor de Agenda - SAFADASSO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -172,20 +172,19 @@
 <body>
     <header>
         <div class="container">
-            <h1>Editor de Agenda Offline - SAFADASSO</h1>
-            <p>Crie e edite sua agenda sem necessidade de PHP</p>
+            <h1>Editor de Agenda - SAFADASSO</h1>
+            <p>Crie e edite sua agenda diretamente no Cloudflare</p>
         </div>
     </header>
 
     <div class="container">
         <div class="notice">
-            <h3><i class="fas fa-exclamation-triangle"></i> Importante: Limitação do GitHub Pages</h3>
-            <p>O GitHub Pages não executa código PHP. Para atualizar sua agenda, você precisará:</p>
+            <h3><i class="fas fa-exclamation-triangle"></i> Importante: Nova Funcionalidade com Cloudflare</h3>
+            <p>Agora com o Cloudflare Pages, você pode atualizar sua agenda diretamente, sem necessidade de upload manual para o GitHub:</p>
             <ol class="steps">
-                <li>Carregar o arquivo agenda.json atual (opcional)</li>
-                <li>Editar as streams conforme necessário</li>
-                <li>Baixar o arquivo agenda.json atualizado</li>
-                <li>Fazer upload manual deste arquivo para o seu repositório no GitHub</li>
+                <li>Carregue o arquivo agenda.json atual (opcional)</li>
+                <li>Edite as streams conforme necessário</li>
+                <li>Clique em "Salvar Agenda no Cloudflare" para atualizar automaticamente</li>
             </ol>
         </div>
 
@@ -201,6 +200,7 @@
                 <textarea id="manual-json" placeholder="Cole o JSON da agenda aqui"></textarea>
             </div>
             <button id="load-button" class="button-secondary"><i class="fas fa-upload"></i> Carregar Agenda</button>
+            <button id="fetch-agenda-button" class="button-secondary" style="margin-left: 10px;"><i class="fas fa-cloud-download-alt"></i> Buscar Agenda do Site</button>
         </div>
 
         <div class="section">
@@ -254,20 +254,15 @@
         </div>
 
         <div class="section">
-            <h2><i class="fas fa-download"></i> Baixar JSON Atualizado</h2>
-            <p class="mb-10">Depois de fazer todas as alterações, baixe o arquivo agenda.json atualizado:</p>
-            <button id="download-json" class="button-secondary"><i class="fas fa-download"></i> Baixar agenda.json</button>
+            <h2><i class="fas fa-cloud-upload-alt"></i> Salvar Agenda</h2>
+            <p class="mb-10">Depois de fazer todas as alterações, você pode:</p>
+            <div class="btn-container">
+                <button id="save-to-cloudflare" class="button-secondary"><i class="fas fa-cloud-upload-alt"></i> Salvar Agenda no Cloudflare</button>
+                <button id="download-json" class=""><i class="fas fa-download"></i> Baixar agenda.json</button>
+            </div>
             
-            <div class="info" style="margin-top: 20px;">
-                <h3><i class="fas fa-info-circle"></i> Instruções para upload no GitHub</h3>
-                <ol class="steps">
-                    <li>Acesse seu repositório GitHub: <a href="https://github.com/Fabianob19/safadasso.github.io" target="_blank">https://github.com/Fabianob19/safadasso.github.io</a></li>
-                    <li>Clique no arquivo agenda.json existente (ou clique em Add file &gt; Upload files para criar um novo)</li>
-                    <li>Clique no botão de edição (ícone de lápis) ou faça upload do arquivo baixado</li>
-                    <li>Cole o conteúdo do JSON ou confirme o upload</li>
-                    <li>Adicione uma mensagem de commit descritiva (ex: "Atualizar agenda de streams")</li>
-                    <li>Clique em "Commit changes"</li>
-                </ol>
+            <div id="save-status" class="info" style="margin-top: 20px; display: none;">
+                <p><i class="fas fa-info-circle"></i> <span id="save-message"></span></p>
             </div>
         </div>
     </div>
@@ -282,6 +277,76 @@
             streams: [],
             ultimaAtualizacao: getFormattedDate()
         };
+        
+        // URL da API Cloudflare
+        const cloudflareAPI = '/functions/agenda';
+        
+        // Botão para buscar agenda do site
+        document.getElementById('fetch-agenda-button').addEventListener('click', async function() {
+            try {
+                const response = await fetch(cloudflareAPI);
+                if (!response.ok) {
+                    throw new Error(`Erro ao buscar agenda: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                loadAgendaData(data);
+                alert('Agenda carregada com sucesso do servidor!');
+            } catch (error) {
+                alert(`Não foi possível carregar a agenda: ${error.message}`);
+            }
+        });
+        
+        // Botão para salvar agenda no Cloudflare
+        document.getElementById('save-to-cloudflare').addEventListener('click', async function() {
+            if (agendaData.streams.length === 0) {
+                if (!confirm('A agenda está vazia. Deseja continuar mesmo assim?')) {
+                    return;
+                }
+            }
+            
+            // Ordenar streams por data e hora
+            agendaData.streams.sort((a, b) => {
+                const dateA = new Date(a.data + 'T' + a.horario);
+                const dateB = new Date(b.data + 'T' + b.horario);
+                return dateA - dateB;
+            });
+            
+            // Atualizar a data de atualização
+            agendaData.ultimaAtualizacao = getFormattedDate();
+            
+            try {
+                const saveStatus = document.getElementById('save-status');
+                const saveMessage = document.getElementById('save-message');
+                
+                saveStatus.style.display = 'block';
+                saveMessage.textContent = 'Salvando agenda...';
+                
+                const response = await fetch(cloudflareAPI, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(agendaData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    saveMessage.textContent = 'Agenda salva com sucesso!';
+                    saveStatus.className = 'info';
+                } else {
+                    throw new Error(result.message || 'Erro ao salvar agenda');
+                }
+            } catch (error) {
+                const saveStatus = document.getElementById('save-status');
+                const saveMessage = document.getElementById('save-message');
+                
+                saveStatus.style.display = 'block';
+                saveStatus.className = 'notice';
+                saveMessage.textContent = `Erro ao salvar: ${error.message}`;
+            }
+        });
         
         // Botão para carregar agenda
         document.getElementById('load-button').addEventListener('click', function() {
@@ -610,6 +675,20 @@
         
         // Inicialização
         renderStreams();
+        
+        // Tenta carregar a agenda ao iniciar a página
+        window.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch(cloudflareAPI);
+                if (response.ok) {
+                    const data = await response.json();
+                    loadAgendaData(data);
+                    console.log('Agenda carregada automaticamente do servidor.');
+                }
+            } catch (error) {
+                console.error('Não foi possível carregar a agenda automaticamente:', error);
+            }
+        });
     </script>
 </body>
 </html> 

@@ -1,0 +1,34 @@
+[site]
+bucket = "./"
+entry-point = "."
+
+[build]
+command = ""
+upload.format = "directory"
+
+[build.upload]
+dir = "."
+
+# Configuração principal necessária
+name = "safadasso"
+main = "functions/main.js"  # Ponto de entrada principal para o Worker
+compatibility_date = "2025-04-18"  # Data de compatibilidade atual
+
+# Configuração para assets estáticos
+[assets]
+directory = "./"
+
+[env.production]
+name = "safadasso"
+route = "safadasso.com/*"
+
+[env.development]
+name = "safadasso-dev"
+
+# Configurações de Headers
+[[headers]]
+for = "/*"
+[headers.values]
+Access-Control-Allow-Origin = "*"
+Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+Access-Control-Allow-Headers = "Content-Type, Authorization" 
